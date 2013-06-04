@@ -40,7 +40,6 @@
       },
       "runtime" : {
          "requires" : {
-            "Data::Dumper::Concise" : "1.60",
             "JSON::XS" : "2.33",
             "LWP::UserAgent" : "0",
             "Moo" : "1.001",
@@ -48,7 +47,7 @@
             "Safe::Isa" : "1.000003",
             "Try::Tiny" : "0.12",
             "URI" : "0",
-            "perl" : "5.010"
+            "perl" : "5.008005"
          }
       },
       "test" : {
@@ -61,7 +60,7 @@
    "provides" : {
       "WWW::JSON" : {
          "file" : "lib/WWW/JSON.pm",
-         "version" : "0.02"
+         "version" : "0.03"
       },
       "WWW::JSON::Response" : {
          "file" : "lib/WWW/JSON/Response.pm"
@@ -90,7 +89,7 @@
          "web" : "https://github.com/antipasta/WWW-JSON"
       }
    },
-   "version" : "0.02",
+   "version" : "0.03",
    "x_contributors" : [
       "Joe Papperello <joeyis@gmail.com>",
       "Joe Papperello <joe@socialflow.com>"

@@ -1,15 +1,14 @@
 package WWW::JSON;
-use 5.010;
+use 5.008005;
 use strict;
 use warnings;
 
-our $VERSION = "0.02";
+our $VERSION = "0.03";
 use LWP::UserAgent;
 use Moo;
 use Try::Tiny;
 use URI;
 use WWW::JSON::Response;
-use Data::Dumper::Concise;
 use Safe::Isa;
 use JSON::XS;
 
@@ -70,6 +69,7 @@ sub head   { shift->req( 'HEAD',   @_ ) }
 
 sub req {
     my ( $self, $method, $path, $params ) = @_;
+    $params = {} unless defined($params);
     unless ( $path->$_isa('URI') ) {
         $path =~ s|^/|./|;
         $path = URI->new($path);
@@ -77,7 +77,7 @@ sub req {
     my $p =
       ( $method eq 'GET' )
       ? $params
-      : { %{ $self->body_params }, %{ $params // {} } };
+      : { %{ $self->body_params }, %{$params} };
     my $abs_uri =
       ( $path->scheme ) ? $path : URI->new_abs( $path, $self->base_url );
     $abs_uri->query_form( $path->query_form, $self->base_url->query_form );

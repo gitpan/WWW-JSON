@@ -1,4 +1,6 @@
 package WWW::JSON::Response;
+use strict;
+use warnings;
 use Moo;
 use JSON::XS;
 use Try::Tiny;
@@ -8,43 +10,54 @@ has http_response => (
     required => 1,
 
     handles => {
-        status_line     => 'status_line',
-        code            => 'code',
-        url             => 'base',
-        content         => 'decoded_content',
+        status_line => 'status_line',
+        code        => 'code',
+        url         => 'base',
+        content     => 'decoded_content',
     },
 );
 has json => ( is => 'lazy', default => sub { JSON::XS->new } );
-has success => ( is => 'lazy', writer => '_set_success' );
+has response            => ( is => 'lazy', builder => '_build_response' );
+has error               => ( is => 'lazy', writer => '_set_error' );
+has _request_params     => ( is => 'ro' );
+has _parent             => ( is => 'ro' );
 has _response_transform => ( is => 'ro' );
-has response => ( is => 'lazy', builder => '_build_response' );
 
-sub _build_success {
+sub success { !shift->error }
+
+sub _build_error {
     my $self = shift;
-    $self->_set_success(0);
+    $self->_set_error('');
     $self->response;
-    return $self->success;
+    return $self->error;
 }
 
 sub _build_response {
     my $self = shift;
-    return try {
-        my $decoded =
-          $self->json->decode( $self->http_response->decoded_content );
-        if ( $self->http_response->is_success ) {
-            $decoded = $self->_response_transform->($decoded,$self)
-              if ( defined( $self->_response_transform ) );
-            $self->_set_success(1);
-        }
-        return $decoded;
+
+    $self->_set_error( $self->status_line )
+      unless ( $self->http_response->is_success );
+
+    my $decoded = try {
+        $self->json->decode( $self->http_response->decoded_content );
     }
     catch {
-        warn "Error decoding json [$_]";
+        $self->_set_error("$_") unless ( $self->error );
         return;
     };
+
+    if ( !( $self->error ) && $self->_response_transform ) {
+        $decoded = $self->_response_transform->($decoded);
+    }
+    return $decoded;
 }
 
 sub res { shift->response }
+
+sub retry {
+    my $self = shift;
+    return $self->_parent->_make_request( @{ $self->_request_params } );
+}
 
 1;
 
@@ -59,17 +72,25 @@ WWW::JSON::Response - Response objects returned by WWW::JSON requests
 =head1 SYNOPSIS
 
     use WWW::JSON;
-    
+
     my $wj = WWW::JSON->new(
-        base_url    => 'https://graph.facebook.com',
-        base_params => { access_token => 'XXXXX' }
+        base_url => 'http://api.metacpan.org/v0?fields=name,distribution&size=1',
+        post_body_format           => 'JSON',
+        default_response_transform => sub { shift->{hits}{hits}[0]{fields} },
     );
-    my $r = $wj->get('/me', { fields => 'email' } );
-    if ($r->success) {
-        print $r->res->{email} . "\n";
+
+    my $get = $wj->get(
+        '/release/_search',
+        {
+            q      => 'author:ANTIPASTA',
+            filter => 'status:latest',
+        }
+    );
+
+    if ($get->success) {
+        say $r->res->{distribution};
     } else {
-        print "HTTP ERROR CODE " . $r->code . "\n";
-        print "HTTP STATUS " . $r->status_line . "\n";
+        say $r->error;
     }
 
 
@@ -87,7 +108,10 @@ An HTTP::Response object containing json
 
 =head2 success
 
-1 if both the http request returned successfully (HTTP 200 OK) AND the json was successfully decoded. 0 if either of those things went badly.
+True if both the http request returned successfully (HTTP 200 OK) AND the json was successfully decoded. False if either of those things went horribly wrong.
+
+=head2 error
+If the http request failed then this is the contents of HTTP::Response->status_line. If the json parse failed it is a combination of the error encountered during JSON parse and the http status line
 
 =head2 response
 

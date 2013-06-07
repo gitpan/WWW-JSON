@@ -10,7 +10,7 @@ configure_requires:
   CPAN::Meta::Prereqs: 0
   Module::Build: 0.38
 dynamic_config: 0
-generated_by: 'Minilla/v0.4.6, CPAN::Meta::Converter version 2.130880'
+generated_by: 'Minilla/v0.4.7, CPAN::Meta::Converter version 2.120921'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -28,17 +28,22 @@ no_index:
 provides:
   WWW::JSON:
     file: lib/WWW/JSON.pm
-    version: 0.03
+    version: 0.04
   WWW::JSON::Response:
     file: lib/WWW/JSON/Response.pm
+    version: 0
   WWW::JSON::Role::Authentication:
     file: lib/WWW/JSON/Role/Authentication.pm
+    version: 0
   WWW::JSON::Role::Authentication::Basic:
     file: lib/WWW/JSON/Role/Authentication/Basic.pm
+    version: 0
   WWW::JSON::Role::Authentication::OAuth1:
     file: lib/WWW/JSON/Role/Authentication/OAuth1.pm
+    version: 0
   WWW::JSON::Role::Authentication::OAuth2:
     file: lib/WWW/JSON/Role/Authentication/OAuth2.pm
+    version: 0
 requires:
   JSON::XS: 2.33
   LWP::UserAgent: 0
@@ -52,7 +57,7 @@ resources:
   bugtracker: https://github.com/antipasta/WWW-JSON/issues
   homepage: https://github.com/antipasta/WWW-JSON
   repository: git://github.com/antipasta/WWW-JSON.git
-version: 0.03
+version: 0.04
 x_contributors:
   - 'Joe Papperello <joeyis@gmail.com>'
   - 'Joe Papperello <joe@socialflow.com>'

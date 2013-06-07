@@ -4,6 +4,7 @@ LICENSE
 META.json
 README.md
 cpanfile
+examples/metacpan.pl
 lib/WWW/JSON.pm
 lib/WWW/JSON/Response.pm
 lib/WWW/JSON/Role/Authentication.pm
@@ -16,5 +17,6 @@ t/auth_oauth1.t
 t/get.t
 t/misc.t
 t/post.t
+t/retry.t
 META.yml
 MANIFEST

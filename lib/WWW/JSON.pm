@@ -3,7 +3,7 @@ use 5.008005;
 use strict;
 use warnings;
 
-our $VERSION = "0.03";
+our $VERSION = "0.04";
 use LWP::UserAgent;
 use Moo;
 use Try::Tiny;
@@ -11,11 +11,12 @@ use URI;
 use WWW::JSON::Response;
 use Safe::Isa;
 use JSON::XS;
+use HTTP::Request::Common;
 
 has ua => (
     is      => 'lazy',
     handles => [qw/timeout default_header/],
-    default => sub { LWP::UserAgent->new }
+    default => sub { LWP::UserAgent->new(%{$_[0]->ua_options}) }
 );
 has base_url => (
     is     => 'rw',
@@ -59,7 +60,17 @@ has default_response_transform => (
     }
 );
 
+has ua_options => ( is => 'lazy', default => sub { +{} });
+
 with 'WWW::JSON::Role::Authentication';
+my %METHOD_DISPATCH = (
+    GET    => \&HTTP::Request::Common::GET,
+    POST   => \&HTTP::Request::Common::POST,
+    PUT    => \&HTTP::Request::Common::PUT,
+    DELETE => \&HTTP::Request::Common::DELETE,
+    HEAD   => \&HTTP::Request::Common::HEAD
+);
+
 sub get    { shift->req( 'GET',    @_ ) }
 sub post   { shift->req( 'POST',   @_ ) }
 sub put    { shift->req( 'PUT',    @_ ) }
@@ -68,7 +79,7 @@ sub head   { shift->req( 'HEAD',   @_ ) }
 
 
 sub req {
-    my ( $self, $method, $path, $params ) = @_;
+    my ( $self, $method, $path, $params) = @_;
     $params = {} unless defined($params);
     unless ( $path->$_isa('URI') ) {
         $path =~ s|^/|./|;
@@ -82,7 +93,7 @@ sub req {
       ( $path->scheme ) ? $path : URI->new_abs( $path, $self->base_url );
     $abs_uri->query_form( $path->query_form, $self->base_url->query_form );
 
-    return $self->_make_request( $method, $abs_uri, $p );
+    return $self->_make_request( $method, $abs_uri, $p);
 }
 
 sub body_param {
@@ -101,11 +112,11 @@ sub _create_post_body {
     return ( Content => $p );
 }
 
-sub _make_request {
-    my ( $self, $method, $uri, $p ) = @_;
+sub _create_request_obj {
+    my ( $self, $method, $uri, $p) = @_;
+    my $dispatch = $METHOD_DISPATCH{$method}
+      or die "Method $method not implemented";
 
-    my $lwp_method = lc($method);
-    die "Method $method not implemented" unless ( $self->ua->can($lwp_method) );
     my %payload;
 
     if ($p) {
@@ -114,12 +125,21 @@ sub _make_request {
         }
         else { %payload = $self->_create_post_body($p) }
     }
-    my $resp = $self->ua->$lwp_method( $uri->as_string, %payload );
+    return $dispatch->( $uri->as_string, %payload );
+}
+
+sub _make_request {
+    my ( $self, $method, $uri, $p ) = @_;
+    my $request_obj = $self->_create_request_obj( $method, $uri, $p );
+    my $resp = $self->ua->request($request_obj);
 
     return WWW::JSON::Response->new(
         {
-            http_response      => $resp,
-            _response_transform => $self->default_response_transform
+            http_response       => $resp,
+            _response_transform => $self->default_response_transform,
+            json                => $self->json,
+            _request_params     => [ $method, $uri, $p ],
+            _parent             => $self,
         }
     );
 }
@@ -136,12 +156,22 @@ WWW::JSON - Make working with JSON Web API's as painless as possible
 =head1 SYNOPSIS
 
     use WWW::JSON;
-    
+
     my $wj = WWW::JSON->new(
-        base_url    => 'https://graph.facebook.com?access_token=XXXX',
+        base_url => 'http://api.metacpan.org/v0?fields=name,distribution&size=1',
+        post_body_format           => 'JSON',
+        default_response_transform => sub { shift->{hits}{hits}[0]{fields} },
     );
-    my $r = $wj->get('/me', { fields => 'email' } );
-    my $email = $r->res->{email} if ($r->success);
+
+    my $get = $wj->get(
+        '/release/_search',
+        {
+            q      => 'author:ANTIPASTA',
+            filter => 'status:latest',
+        }
+    );
+
+    warn "DISTRIBUTION: " . $get->res->{distribution} if $get->success;
 
 =head1 DESCRIPTION
 
@@ -250,6 +280,10 @@ Basic => { username => 'antipasta', password => 'hunter2' }
 OAuth2 => Net::OAuth2::AccessToken->new( ... )
 
 New roles can be created to support different types of authentication. Documentation on this will be fleshed out at a later time.
+
+=head2 ua_options
+
+Options that can be passed when initializing the useragent. For example { timeout => 5 }. See LWP::UserAgent for possibilities.
 
 =head1 METHODS
 

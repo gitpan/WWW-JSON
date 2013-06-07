@@ -1,5 +1,6 @@
 package WWW::JSON::Role::Authentication::Basic;
 use Moo::Role;
+use MIME::Base64;
 requires 'authentication';
 requires 'ua';
 
@@ -13,9 +14,10 @@ sub _validate_Basic {
 }
 
 sub _auth_Basic {
-    my ( $self, $auth ) = @_;
-    $self->ua->default_headers->authorization_basic(
-        @$auth{qw/username password/} );
+    my ( $self, $auth, $req ) = @_;
+    $req->header( Authorization => 'Basic '
+          . encode_base64( join( ':', @$auth{qw/username password/} ), '' ) );
+
 }
 
 1;

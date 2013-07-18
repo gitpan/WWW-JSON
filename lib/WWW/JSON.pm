@@ -3,7 +3,7 @@ use 5.008005;
 use strict;
 use warnings;
 
-our $VERSION = "0.04";
+our $VERSION = "0.05";
 use LWP::UserAgent;
 use Moo;
 use Try::Tiny;
@@ -16,7 +16,7 @@ use HTTP::Request::Common;
 has ua => (
     is      => 'lazy',
     handles => [qw/timeout default_header/],
-    default => sub { LWP::UserAgent->new(%{$_[0]->ua_options}) }
+    default => sub { LWP::UserAgent->new( %{ $_[0]->ua_options } ) }
 );
 has base_url => (
     is     => 'rw',
@@ -27,7 +27,8 @@ has base_url => (
             my ( $url, $params ) = @{$base_url};
             $u = URI->new($url);
             $u->query_form(%$params);
-        } else {
+        }
+        else {
             $u = URI->new($base_url);
         }
         if ( my $path = $u->path ) {
@@ -50,6 +51,7 @@ has post_body_format => (
     }
 );
 has json => ( is => 'ro', default => sub { JSON::XS->new } );
+has content_type => ( is => 'rw', clearer => 1 );
 
 has default_response_transform => (
     is      => 'rw',
@@ -60,7 +62,7 @@ has default_response_transform => (
     }
 );
 
-has ua_options => ( is => 'lazy', default => sub { +{} });
+has ua_options => ( is => 'lazy', default => sub { +{} } );
 
 with 'WWW::JSON::Role::Authentication';
 my %METHOD_DISPATCH = (
@@ -77,11 +79,10 @@ sub put    { shift->req( 'PUT',    @_ ) }
 sub delete { shift->req( 'DELETE', @_ ) }
 sub head   { shift->req( 'HEAD',   @_ ) }
 
-
 sub req {
-    my ( $self, $method, $path, $params) = @_;
+    my ( $self, $method, $path, $params ) = @_;
     $params = {} unless defined($params);
-    unless ( $path->$_isa('URI') ) {
+    unless ( $path->$_isa('URI') && $path->scheme ) {
         $path =~ s|^/|./|;
         $path = URI->new($path);
     }
@@ -93,7 +94,9 @@ sub req {
       ( $path->scheme ) ? $path : URI->new_abs( $path, $self->base_url );
     $abs_uri->query_form( $path->query_form, $self->base_url->query_form );
 
-    return $self->_make_request( $method, $abs_uri, $p);
+    my $request_obj = $self->_create_request_obj( $method, $abs_uri, $p );
+
+    return $self->http_request( $request_obj, $p);
 }
 
 sub body_param {
@@ -105,15 +108,15 @@ sub _create_post_body {
     my ( $self, $p ) = @_;
     if ( $self->post_body_format eq 'JSON' ) {
         return (
-            'Content-Type' => 'application/json',
+            'Content-Type' => $self->content_type || 'application/json',
             Content        => $self->json->encode($p)
         );
     }
-    return ( Content => $p );
+    return ( Content => $p, ($self->content_type) ? ('Content-Type' => $self->content_type) : () );
 }
 
 sub _create_request_obj {
-    my ( $self, $method, $uri, $p) = @_;
+    my ( $self, $method, $uri, $p ) = @_;
     my $dispatch = $METHOD_DISPATCH{$method}
       or die "Method $method not implemented";
 
@@ -128,9 +131,8 @@ sub _create_request_obj {
     return $dispatch->( $uri->as_string, %payload );
 }
 
-sub _make_request {
-    my ( $self, $method, $uri, $p ) = @_;
-    my $request_obj = $self->_create_request_obj( $method, $uri, $p );
+sub http_request {
+    my ( $self, $request_obj) = @_;
     my $resp = $self->ua->request($request_obj);
 
     return WWW::JSON::Response->new(
@@ -138,7 +140,7 @@ sub _make_request {
             http_response       => $resp,
             _response_transform => $self->default_response_transform,
             json                => $self->json,
-            _request_params     => [ $method, $uri, $p ],
+            _request_obj        => $request_obj,
             _parent             => $self,
         }
     );

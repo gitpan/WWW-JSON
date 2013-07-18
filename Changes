@@ -1,5 +1,10 @@
 Revision history for Perl extension WWW-JSON
 
+0.05 2013-07-18T19:07:02Z
+    - Some code restructuring
+    - http_request method which allows you to past a fully formed HTTP::Request object. Auth is applied and nothing else
+    - Fixed a bug around when relative URI objects are requested
+
 0.04 2013-06-07T16:35:53Z
     - Added response->error 
     - Experimental ability for a response to retry itself via resp->retry(), still thinking this through so it's not in the perldoc yet

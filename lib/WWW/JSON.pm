@@ -3,7 +3,7 @@ use 5.008005;
 use strict;
 use warnings;
 
-our $VERSION = "0.05";
+our $VERSION = "0.06";
 use LWP::UserAgent;
 use Moo;
 use Try::Tiny;
@@ -50,7 +50,7 @@ has post_body_format => (
           unless ( $_[0] eq 'serialized' || $_[0] eq 'JSON' );
     }
 );
-has json => ( is => 'ro', default => sub { JSON::XS->new } );
+has json => ( is => 'ro', default => sub { JSON::XS->new->allow_nonref } );
 has content_type => ( is => 'rw', clearer => 1 );
 
 has default_response_transform => (
@@ -87,7 +87,7 @@ sub req {
         $path = URI->new($path);
     }
     my $p =
-      ( $method eq 'GET' )
+      ( $method eq 'GET' || $method eq 'DELETE' )
       ? $params
       : { %{ $self->body_params }, %{$params} };
     my $abs_uri =
@@ -123,7 +123,7 @@ sub _create_request_obj {
     my %payload;
 
     if ($p) {
-        if ( $method eq 'GET' ) {
+        if ( $method eq 'GET' || $method eq 'DELETE') {
             $uri->query_form( $uri->query_form, %$p );
         }
         else { %payload = $self->_create_post_body($p) }

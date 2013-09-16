@@ -1,5 +1,10 @@
 Revision history for Perl extension WWW-JSON
 
+0.06 2013-09-16T22:07:19Z
+    - HTTP DELETE should pass params in query string
+    - Dont try to JSON decode if you get nothing back
+    - allow_nonref when decoding JSON
+
 0.05 2013-07-18T19:07:02Z
     - Some code restructuring
     - http_request method which allows you to past a fully formed HTTP::Request object. Auth is applied and nothing else

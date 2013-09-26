@@ -18,5 +18,6 @@ t/get.t
 t/misc.t
 t/post.t
 t/retry.t
+t/templating.t
 META.yml
 MANIFEST

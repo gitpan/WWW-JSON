@@ -3,7 +3,7 @@ use 5.008005;
 use strict;
 use warnings;
 
-our $VERSION = "0.06";
+our $VERSION = "0.07";
 use LWP::UserAgent;
 use Moo;
 use Try::Tiny;
@@ -82,21 +82,34 @@ sub head   { shift->req( 'HEAD',   @_ ) }
 sub req {
     my ( $self, $method, $path, $params ) = @_;
     $params = {} unless defined($params);
-    unless ( $path->$_isa('URI') && $path->scheme ) {
-        $path =~ s|^/|./|;
-        $path = URI->new($path);
-    }
     my $p =
       ( $method eq 'GET' || $method eq 'DELETE' )
       ? $params
       : { %{ $self->body_params }, %{$params} };
+    ( $path, $p ) = $self->_do_templating( $path, $p )
+      if ( $path =~ /\[\%.*\%\]/ );
+    unless ( $path->$_isa('URI') && $path->scheme ) {
+        $path =~ s|^/|./|;
+        $path = URI->new($path);
+    }
     my $abs_uri =
       ( $path->scheme ) ? $path : URI->new_abs( $path, $self->base_url );
     $abs_uri->query_form( $path->query_form, $self->base_url->query_form );
 
     my $request_obj = $self->_create_request_obj( $method, $abs_uri, $p );
 
-    return $self->http_request( $request_obj, $p);
+    return $self->http_request( $request_obj, $p );
+}
+
+sub _do_templating {
+    my ( $self, $path, $params ) = @_;
+    my %modified_params = %$params;
+    for my $key ( grep { $_ =~ /^-/ } keys(%$params) ) {
+        (my $search_key = $key) =~ s/^-//;
+        delete $modified_params{$key}
+          if ( $path =~ s/\[\%\s*$search_key\s*\%\]/$params->{$key}/g );
+    }
+    return ( $path, \%modified_params );
 }
 
 sub body_param {
@@ -109,10 +122,13 @@ sub _create_post_body {
     if ( $self->post_body_format eq 'JSON' ) {
         return (
             'Content-Type' => $self->content_type || 'application/json',
-            Content        => $self->json->encode($p)
+            Content => $self->json->encode($p)
         );
     }
-    return ( Content => $p, ($self->content_type) ? ('Content-Type' => $self->content_type) : () );
+    return (
+        Content => $p,
+        ( $self->content_type ) ? ( 'Content-Type' => $self->content_type ) : ()
+    );
 }
 
 sub _create_request_obj {
@@ -123,7 +139,7 @@ sub _create_request_obj {
     my %payload;
 
     if ($p) {
-        if ( $method eq 'GET' || $method eq 'DELETE') {
+        if ( $method eq 'GET' || $method eq 'DELETE' ) {
             $uri->query_form( $uri->query_form, %$p );
         }
         else { %payload = $self->_create_post_body($p) }
@@ -132,7 +148,7 @@ sub _create_request_obj {
 }
 
 sub http_request {
-    my ( $self, $request_obj) = @_;
+    my ( $self, $request_obj ) = @_;
     my $resp = $self->ua->request($request_obj);
 
     return WWW::JSON::Response->new(
@@ -140,8 +156,7 @@ sub http_request {
             http_response       => $resp,
             _response_transform => $self->default_response_transform,
             json                => $self->json,
-            _request_obj        => $request_obj,
-            _parent             => $self,
+            request_object      => $request_obj,
         }
     );
 }
@@ -206,6 +221,7 @@ Thus, WWW::JSON was born. Perl + Web + JSON - tears
     -Set a url that all requests will be relative to
     -Set query params included on all requests
     -Set body params included on all requests that contain a POST body
+    -URL paths support primitive templating
     -Transform the response of all API requests. Useful if an API returns data in a silly structure.
 
 -Work with APIs that require different parameter serialization
@@ -225,6 +241,12 @@ Thus, WWW::JSON was born. Perl + Web + JSON - tears
     -Don't have to worry about going from JSON => perl and back
     -Handles HTTP and JSON decode errors gracefully
 
+-Templating
+    Can put templates in url paths
+
+    Use template toolkit style brackets in url. Populate a template variable in the second parameter's
+    hashref by prefixing it with a dash(-). Example:
+        $wj->get('/users/[% user_id %]/status, { page => 3, -user_id => 456 });
 
 
 =head1 PARAMETERS

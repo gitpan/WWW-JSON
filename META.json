@@ -4,10 +4,8 @@
       "Joe Papperello <antipasta@cpan.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v0.7.0",
-   "license" : [
-      "perl_5"
-   ],
+   "generated_by" : "Minilla/v0.4.4",
+   "license" : "perl_5",
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
       "version" : "2"
@@ -62,7 +60,7 @@
    "provides" : {
       "WWW::JSON" : {
          "file" : "lib/WWW/JSON.pm",
-         "version" : "0.07"
+         "version" : "0.08"
       },
       "WWW::JSON::Response" : {
          "file" : "lib/WWW/JSON/Response.pm"
@@ -91,7 +89,7 @@
          "web" : "https://github.com/antipasta/WWW-JSON"
       }
    },
-   "version" : "0.07",
+   "version" : "0.08",
    "x_contributors" : [
       "Joe Papperello <joeyis@gmail.com>",
       "Joe Papperello <joe@socialflow.com>"

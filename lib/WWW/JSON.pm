@@ -3,7 +3,7 @@ use 5.008005;
 use strict;
 use warnings;
 
-our $VERSION = "0.07";
+our $VERSION = "0.08";
 use LWP::UserAgent;
 use Moo;
 use Try::Tiny;
@@ -50,7 +50,9 @@ has post_body_format => (
           unless ( $_[0] eq 'serialized' || $_[0] eq 'JSON' );
     }
 );
-has json => ( is => 'ro', default => sub { JSON::XS->new->allow_nonref } );
+has json =>
+  ( is => 'ro', default => sub { JSON::XS->new->utf8->allow_nonref } );
+
 has content_type => ( is => 'rw', clearer => 1 );
 
 has default_response_transform => (
